@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/ChernakovEgor/gator/internal/config"
@@ -37,4 +38,15 @@ func (c *commands) run(s *state, cmd command) error {
 		return err
 	}
 	return nil
+}
+
+func middlewareLoggedIn(handler func(s *state, cmd command, user database.User) error) func(*state, command) error {
+	return func(s *state, cmd command) error {
+		user, err := s.db.GetUser(context.Background(), s.cfg.User)
+		if err != nil {
+			return fmt.Errorf("user not logged in: %v", err)
+		}
+		err = handler(s, cmd, user)
+		return err
+	}
 }

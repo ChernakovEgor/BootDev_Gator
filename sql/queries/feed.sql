@@ -9,3 +9,14 @@ SELECT f.name,
        u.name
   FROM feeds f
 JOIN users u ON u.id = f.user_id;
+
+-- name: MarkFeedFetched :exec
+UPDATE feeds
+   SET updated_at = @currentTime,
+       last_fetched_at = @currentTime
+ WHERE feeds.id = @feed_id;
+
+-- name: GetNextFeedToFetch :one
+SELECT *
+  FROM feeds
+ORDER BY last_fetched_at ASC NULLS FIRST;

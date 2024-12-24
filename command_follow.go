@@ -8,12 +8,12 @@ import (
 	"github.com/ChernakovEgor/gator/internal/database"
 )
 
-func handlerFollow(s *state, cmd command) error {
+func handlerFollow(s *state, cmd command, user database.User) error {
 	if len(cmd.args) < 1 {
 		return fmt.Errorf("could not follow: not enough arguments")
 	}
 
-	currentUser := s.cfg.User
+	currentUser := user.Name
 	url := cmd.args[0]
 	followParams := database.CreateFeedFollowParams{CreatedAt: time.Now(), UpdatedAt: time.Now(), Url: url, Name: currentUser}
 	res, err := s.db.CreateFeedFollow(context.Background(), followParams)

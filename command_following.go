@@ -3,11 +3,12 @@ package main
 import (
 	"context"
 	"fmt"
+
+	"github.com/ChernakovEgor/gator/internal/database"
 )
 
-func handlerFollowing(s *state, _ command) error {
-
-	follows, err := s.db.GetFeedFollowsForUser(context.Background(), s.cfg.User)
+func handlerFollowing(s *state, _ command, user database.User) error {
+	follows, err := s.db.GetFeedFollowsForUser(context.Background(), user.Name)
 	if err != nil {
 		return fmt.Errorf("could not get follows: %v", err)
 	}
