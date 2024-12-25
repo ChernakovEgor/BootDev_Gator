@@ -5,6 +5,9 @@ import (
 	"encoding/xml"
 	"fmt"
 	"net/http"
+	"time"
+
+	"github.com/ChernakovEgor/gator/internal/database"
 )
 
 type RSSFeed struct {
@@ -12,7 +15,7 @@ type RSSFeed struct {
 		Title       string    `xml:"title"`
 		Link        string    `xml:"link"`
 		Description string    `xml:"description"`
-		Item        []RSSItem `xml:"item"`
+		Items       []RSSItem `xml:"item"`
 	} `xml:"channel"`
 }
 
@@ -23,13 +26,26 @@ type RSSItem struct {
 	PubDate     string `xml:"pubDate"`
 }
 
-func handlerAgg(s *state, _ command) error {
-	url := "https://www.wagslane.dev/index.xml"
-	feed, err := fetchFeed(context.Background(), url)
+func handlerAgg(s *state, cmd command) error {
+	if len(cmd.args) < 1 {
+		return fmt.Errorf("not enough arguments")
+	}
 
-	fmt.Printf("feed: %v\n", feed)
+	freq := cmd.args[0]
+	duration, err := time.ParseDuration(freq)
+	if err != nil {
+		return fmt.Errorf("could not parse duration: %v", err)
+	}
 
-	return err
+	ticker := time.NewTicker(duration)
+	for ; ; <-ticker.C {
+		err := scrapeFeeds(s)
+		if err != nil {
+			return fmt.Errorf("could not scrape feeds: %v", err)
+		}
+	}
+
+	return nil
 }
 
 func fetchFeed(ctx context.Context, feedURL string) (*RSSFeed, error) {
@@ -54,4 +70,23 @@ func fetchFeed(ctx context.Context, feedURL string) (*RSSFeed, error) {
 	}
 
 	return &feed, nil
+}
+
+func scrapeFeeds(s *state) error {
+	nextFeed, err := s.db.GetNextFeedToFetch(context.Background())
+	if err != nil {
+		return fmt.Errorf("could not get next feed to fetch: %v", err)
+	}
+
+	feed, err := fetchFeed(context.Background(), nextFeed.Url)
+	if err != nil {
+		return fmt.Errorf("could not fetch feed: %v", err)
+	}
+
+	s.db.MarkFeedFetched(context.Background(), database.MarkFeedFetchedParams{Currenttime: time.Now(), FeedID: nextFeed.ID})
+	for _, item := range feed.Channel.Items {
+		fmt.Println(item.Title)
+	}
+
+	return nil
 }
